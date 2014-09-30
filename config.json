@@ -1,0 +1,7 @@
+{
+    "baseURL" : "www.rightmove.co.uk",
+    "query"	  : "/house-prices/detail.html?country=england&locationIdentifier=POSTCODE%5E3973297&searchLocation=E3+3GN&radius=1.0&year=1&referrer=listChangeCriteria",
+    "port" : "80",
+    "retryInterval" : "300",
+    "filterPattern" : "/house-prices\/detail.html/i"
+}
