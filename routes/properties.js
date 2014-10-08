@@ -40,6 +40,15 @@ function openCollection() {
         });
 }
 
+exports.findById = function(req, res) {
+    var id = req.params.id;
+    db.collection('properties', function(err, collection) {
+        collection.findOne({'_id': id}, function(err, item) {
+            res.send(item);
+        });
+    });
+};
+
 exports.findByAllTags = function(req, res) {
     var tags = req.params.tags.split(',').join('&');
     db.collection('properties', function(err, collection) {
@@ -53,7 +62,7 @@ exports.findByAnyTag = function(req, res) {
     var tags = req.params.tags.split(',').join('|');
     // var excludes = req.params.excludes.split(',').join('|');
     db.collection('properties', function(err, collection) {
-        collection.find({'description' : { '$regex' : tags }}).toArray(function(err, items) {
+        collection.find({'description' : { '$regex' : tags }}).limit(50).toArray(function(err, items) {
             res.send(items);
         });
     });

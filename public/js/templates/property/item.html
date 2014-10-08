@@ -1,9 +1,41 @@
 <div class="col-md-6 col-sm-6 col-xs-12">
 	<div class="property-url">
-	<a href='http://rightmove.co.uk/<%= property.get("_id") %>'>http://rightmove.co.uk/<%= property.get("_id") %></a>
+	<a href='http://rightmove.co.uk/<%= property.get("_id") %>'><%= property.get("address").toUpperCase() %></a>
 	</div>
+	
+	<div class="property-summary">
+		<span class="label label-primary"><%= property.get("type") %></span>
+		<span class="label label-success"><%= property.get("price") %></span>
+	</div>
+
+	<!--
+
 	<div class="property-description">
-	<%= property.get("description").substring(0,500) %><p class="collapse" id="viewdetails-<%= index %>"><%= property.get("description").substring(500) %></p>	
+	<p class="collapse" id="viewdetails-<%= index %>"><%= property.get("description") %></p>	
 	<a class="btn showdetails" data-toggle="collapse" data-target="#viewdetails-<%= index %>"></a>
+	</div>-->
+
+	<div class="modal fade" id="viewdetails-<%= index %>" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header label-warning">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title" id="myModalLabel"><%= property.get("address").toUpperCase() %></h4>
+          </div>
+          <div class="modal-body">
+            <div class="property-description">
+            	<%= property.get("description").replace(new RegExp(tags.join("|"),"gi"), function(matched) { return '<span class="label label-success">'+ matched + '</span>';}) %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+	<div class="property-description">
+		<span class="label label-warning">
+			<a data-toggle="modal" data-target="#viewdetails-<%= index %>" href="#">Description</a>
+		</span>
 	</div>
+
+
 </div>

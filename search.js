@@ -47,14 +47,27 @@ crawler.on("fetchstart", function(queueItem) {
 
 crawler.on("fetchcomplete", function(queueItem, responseBuffer, response) {
 	console.log("Fetch Complete : " + queueItem.url + ", time : "  + (new Date().getTime() - stats[queueItem.path]));
+
 	var $ = Cheerio.load(responseBuffer);
 	if(queueItem.path.match(/^\/property-for-sale\/property-[0-9]*.html/i)) {
-		var description = $('.propertyDetailDescription').text();
+
+		// console.log(responseBuffer.toString());
+
+		var price = $('#amount').text().trim();
+		var address = $('h2','#addresscontainer').text().trim();
+		var type = $('h1#propertytype').text().trim();
+		var description = $('.propertyDetailDescription').text().trim();
 
 		var property = {
 			"_id" : queueItem.path,
+			"price"   : price,
+			"address" : address,
+			"type" : type,
 			"description" : description
 		};
+
+		// console.log(JSON.stringify(property));
+		
 
 		db.collection('properties', function(error, collection) {
 			collection.insert(property, {safe: true}, function(err, result) {
@@ -65,6 +78,7 @@ crawler.on("fetchcomplete", function(queueItem, responseBuffer, response) {
 				}
 			});
 		});
+
 
 	} else {
 

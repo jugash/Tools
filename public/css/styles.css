@@ -1,21 +1,27 @@
 .property-box div {
-    padding: 15px;
-    font-size: 18px;
+    padding: 5px;
+    
 }
 
-.property-description div {
-  padding: 25px;
+.property-description {
+  padding: 20px;
+  font-size: 18px;
 }
 
 
 .property-url{
-  color: white;
+  color: #DB6EC0;
   /*transform: rotateX(-15deg) rotateY(5deg);  */
-  background-color: #DB6EC0;
+  /*background-color: #DB6EC0;*/
+}
+
+.property-summary{
+  font-size: 24px;
 }
 
 .property-url a {
-  color:white;
+  color:#DB6EC0;
+  font-size: 18px;
 }
 
 body {
