@@ -11,7 +11,7 @@
 .property-url{
   color: white;
   /*transform: rotateX(-15deg) rotateY(5deg);  */
-  background-color: #434edb;
+  background-color: #DB6EC0;
 }
 
 .property-url a {
@@ -23,6 +23,10 @@ body {
   background-color: white;
 }
 
+.search-control {
+  padding : 10px;
+  color : white;
+}
 
 .navbar-custom { 
   font-size: 70;

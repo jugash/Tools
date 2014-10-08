@@ -51,6 +51,7 @@ exports.findByAllTags = function(req, res) {
 
 exports.findByAnyTag = function(req, res) {
     var tags = req.params.tags.split(',').join('|');
+    // var excludes = req.params.excludes.split(',').join('|');
     db.collection('properties', function(err, collection) {
         collection.find({'description' : { '$regex' : tags }}).toArray(function(err, items) {
             res.send(items);

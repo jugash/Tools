@@ -11,6 +11,7 @@ define([
 
 		routes : {
 			'propertyOR/:tags' : 'showPropertyOR',
+			'propertyOR/:tags/exclude/:excludes' : 'showPropertyOR',
 			'*default' : 'showHome'
 		},
 
@@ -28,12 +29,16 @@ define([
 			var homeView = new HomeView();
 			this.changeView(homeView);
 		},
-		showPropertyOR : function(tags) {
+		showPropertyOR : function(tags, excludes) {
 			var properties = new PropertyCollection();
 			var that = this;
 
 			if(tags) {
 				properties.url += '/any/' + tags 	
+			}
+
+			if(excludes) {
+				properties.url += '/exclude/' + excludes 	
 			}
 
 			properties.fetch({

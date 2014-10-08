@@ -12,6 +12,7 @@ app.use(express.bodyParser());
  
 app.get('/properties/all/:tags', property.findByAllTags);
 app.get('/properties/any/:tags', property.findByAnyTag);
+app.get('/properties/any/:tags/exclude/:excludes', property.findByAnyTag);
  
 app.listen(port, ipaddress);
 console.log('Listening on port 3000...');
