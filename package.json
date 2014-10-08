@@ -4,8 +4,8 @@
     "version": "0.0.1",
     "private": true,
     "dependencies": {
-        "express": "3.x",
-        "mongodb": "1.3.23",
+        "express": "*",
+        "mongodb": "*",
         "cheerio": "*",
         "simplecrawler" : "*",
 	"backbone-validation": "*"

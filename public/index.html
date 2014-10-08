@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Property Investors</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->    
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+    
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.10.4/typeahead.bundle.min.js"></script>
+    
+    <!--<link href="css/styles.css" rel="stylesheet">
+    <link href="css/sidebar.css" rel="stylesheet">-->
+    <link href="css/navbar-custom.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+    
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <script data-main="js/main" src="js/require.js"></script>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+
+</head>
+
+<body>
+
+<nav id="myNavbar" class="navbar  navbar-custom navbar-inverse navbar-fixed-top " role="navigation">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbarCollapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">Property Investors</a>
+        </div>
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="nav navbar-nav pull-right">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="need of,investor,refurb..." name="query" value="" id="search-string">
+                        <div class="input-group-btn">
+                    <a id="search-link" class="btn btn-success"><span class="glyphicon glyphicon-search" ></span></a>
+                    </div>
+                </div>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<script type="text/javascript">
+    $( "#search-link" ).on("click", function() {
+        console.log("Event generated");
+        this.href = "/#/propertyOR/" + $('#search-string').val();
+    });
+
+/*
+    $("#search-string").on("keyup",function(event){
+        if(event.keyCode == 13){
+            // event.preventDefault();
+            $("#search-link").click();
+        }
+    });
+*/    
+</script>
+
+<div>
+    <div id="page-content-wrapper">
+        <div class="container-fluid">
+            <div class="row">
+                    <div class="container">
+                    </div>
+            </div>    
+        </div>
+    </div>
+</div>
+
+
+</body>
+</html>

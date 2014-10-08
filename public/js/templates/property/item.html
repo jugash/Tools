@@ -1,0 +1,9 @@
+<div class="col-md-6 col-sm-6 col-xs-12">
+	<div class="property-url">
+	<a href='http://rightmove.co.uk/<%= property.get("_id") %>'>http://rightmove.co.uk/<%= property.get("_id") %></a>
+	</div>
+	<div class="property-description">
+	<%= property.get("description").substring(0,500) %><p class="collapse" id="viewdetails-<%= index %>"><%= property.get("description").substring(500) %></p>	
+	<a class="btn showdetails" data-toggle="collapse" data-target="#viewdetails-<%= index %>"></a>
+	</div>
+</div>

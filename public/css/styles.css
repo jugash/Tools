@@ -1,0 +1,37 @@
+.property-box div {
+    padding: 15px;
+    font-size: 18px;
+}
+
+.property-description div {
+  padding: 25px;
+}
+
+
+.property-url{
+  color: white;
+  /*transform: rotateX(-15deg) rotateY(5deg);  */
+  background-color: #434edb;
+}
+
+.property-url a {
+  color:white;
+}
+
+body {
+  padding-top: 100px;  
+  background-color: white;
+}
+
+
+.navbar-custom { 
+  font-size: 70;
+}
+
+.in.collapse+a.btn.showdetails:before { 
+    content:'Hide details «';
+}
+.collapse+a.btn.showdetails:before { 
+    content:'Show details »'; 
+}
+
