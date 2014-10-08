@@ -2,8 +2,9 @@ define([
   'jquery',
   'underscore',
   'backbone',
-  'views/property/PropertyListItemView'
-], function($, _, Backbone, PropertyListItemView){
+  'views/property/PropertyListItemView',
+  'text!templates/property/tableskeleton.html'
+], function($, _, Backbone, PropertyListItemView, tableTemplate){
   var PropertyListView = Backbone.View.extend({
     
     tagName: "div",
@@ -12,7 +13,7 @@ define([
 
         var properties = this.collection.models;
 
-        $(this.el).html('<div class="thumbnails"></div>');
+        $(this.el).html(_.template(tableTemplate));
 
         for (var i = 0; i <  properties.length; i++) {
             $('.thumbnails', this.el).append(new PropertyListItemView(

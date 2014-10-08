@@ -1,0 +1,44 @@
+
+	<td class="property-url">
+		<a href='http://rightmove.co.uk/<%= property.get("_id") %>'><%= property.get("address").toUpperCase() %></a>
+	</td>
+	
+	<td class="property-summary">
+		<span class="label label-primary"><%= property.get("type") %></span>
+	</td>
+	<td class="property-summary">	
+		<span class="label label-success"><%= property.get("price") %></span>
+	</td>
+
+	<td class="property-description">
+		<span class="label label-warning">
+			<a data-toggle="modal" data-target="#viewdetails-<%= index %>" href="#">Description</a>
+		</span>
+		<div class="modal fade" id="viewdetails-<%= index %>" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+	      <div class="modal-dialog modal-lg">
+	        <div class="modal-content">
+	          <div class="modal-header label-warning">
+	            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+	            <h4 class="modal-title" id="myModalLabel"><%= property.get("address").toUpperCase() %></h4>
+	          </div>
+	          <div class="modal-body">
+	            <div class="property-description">
+	            	<%= property.get("description").replace(new RegExp(tags.join("|"),"gi"), function(matched) { return '<span class="label label-success">'+ matched + '</span>';}) %>
+	            </div>
+	          </div>
+	        </div>
+	      </div>
+    </div>
+	</td>
+
+	<!--
+
+	<div class="property-description">
+	<p class="collapse" id="viewdetails-<%= index %>"><%= property.get("description") %></p>	
+	<a class="btn showdetails" data-toggle="collapse" data-target="#viewdetails-<%= index %>"></a>
+	</div>-->
+
+
+
+
+
