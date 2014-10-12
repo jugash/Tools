@@ -26,12 +26,14 @@ db.open(function(err,db) {
 
 
 var stats = {};
+var findURL = "/property-for-sale/" + process.argv.slice(2) + ".html?maxPrice=150000&minBedrooms=1&radius=3.0&partBuyPartRent=false";
 
-var crawler = new Crawler(config.baseURL, config.find, parseInt(config.port), parseInt(config.retryInterval));
+var crawler = new Crawler(config.baseURL, findURL, parseInt(config.port), parseInt(config.retryInterval));
 
 crawler.downloadUnsupported=false;
 crawler.discoverResources=false;
 
+/*
 var conditionId = crawler.addFetchCondition(function(parsedURL) {
 	var result =  (parsedURL.uriPath.match(/^\/property-for-sale\/Durham.html/i) 
 			|| parsedURL.uriPath.match(/^\/property-for-sale\/property-[0-9]*.html/i))
@@ -39,7 +41,7 @@ var conditionId = crawler.addFetchCondition(function(parsedURL) {
 
 	return result;
 });
-
+*/
 crawler.on("fetchstart", function(queueItem) {
 	stats[queueItem.path] = new Date().getTime();
 	console.log("Fetch Start : " + queueItem.url);
@@ -53,20 +55,48 @@ crawler.on("fetchcomplete", function(queueItem, responseBuffer, response) {
 
 		// console.log(responseBuffer.toString());
 
-		var price = $('#amount').text().trim();
+		var price = $('#amount').text().replace(/£|,/gi,'').trim();
 		var address = $('h2','#addresscontainer').text().trim();
 		var type = $('h1#propertytype').text().trim();
+		
+		var number = 0;
+		var house = "";
+		
+
+		{
+			var regExp = /([0-9])[\s]*bed[\s]*room[\s]*([\S\s]*)\sfor\ssale$/i;
+			var match = regExp.exec(type);
+
+			if(match) {
+				number = match[1];
+				house = match[2];
+			}
+		}
+
+		{
+			var regExp = /([0-9])[\s]*bed[\s]*room[\s]*([\S\s]*)\sfor\ssale$/i;
+			var match = regExp.exec(address);
+
+			if(match) {
+				number = match[1];
+				house = match[2];
+			}
+		}
+
 		var description = $('.propertyDetailDescription').text().trim();
 
 		var property = {
 			"_id" : queueItem.path,
 			"price"   : price,
+			"number" : number,
+			"house" : house,
 			"address" : address,
 			"type" : type,
 			"description" : description
 		};
 
 		// console.log(JSON.stringify(property));
+		
 		
 
 		db.collection('properties', function(error, collection) {

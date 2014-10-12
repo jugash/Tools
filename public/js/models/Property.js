@@ -12,6 +12,8 @@ define([
 		defaults : {
 			_id : null,
 			price : "",
+			number : "",
+			house : "",
 			address : "",
 			type : "",
 			description : ""

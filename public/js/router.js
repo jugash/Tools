@@ -10,8 +10,9 @@ define([
 	var Router = Backbone.Router.extend({
 
 		routes : {
-			'propertyOR/:tags' : 'showPropertyOR',
-			'propertyOR/:tags/exclude/:excludes' : 'showPropertyOR',
+			'propertyOR/tags/:tags' : 'showPropertyOR',
+			'propertyOR/towns/:towns' : 'showPropertyTowns',
+			'propertyOR/tags/:tags/towns/:towns' : 'showPropertyOR',
 			'*default' : 'showHome'
 		},
 
@@ -29,7 +30,10 @@ define([
 			var homeView = new HomeView();
 			this.changeView(homeView);
 		},
-		showPropertyOR : function(tags, excludes) {
+		showPropertyTowns: function(towns) {
+			this.showPropertyOR(null, towns);
+		},
+		showPropertyOR : function(tags, towns) {
 			var properties = new PropertyCollection();
 			var that = this;
 
@@ -37,14 +41,14 @@ define([
 				properties.url += '/any/' + tags 	
 			}
 
-			if(excludes) {
-				properties.url += '/exclude/' + excludes 	
+			if(towns) {
+				properties.url += '/towns/' + towns 	
 			}
 
 			properties.fetch({
 				success : function(collection, response) {
 					var propertiesView = new PropertyListView({collection : collection});
-					that.changeView(propertiesView, tags);
+					that.changeView(propertiesView, { tags : tags, towns : towns});
 				}
 			});
 		},

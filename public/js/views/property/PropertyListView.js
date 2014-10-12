@@ -9,7 +9,12 @@ define([
     
     tagName: "div",
 
-    render: function(tags) {
+    render: function(params) {
+
+        var tags = [];
+        if(params.tags) {
+          tags = params.tags.split(",");
+        }
 
         var properties = this.collection.models;
 
@@ -17,7 +22,7 @@ define([
 
         for (var i = 0; i <  properties.length; i++) {
             $('.thumbnails', this.el).append(new PropertyListItemView(
-                  {model: properties[i]}).render({tags : tags.split(","), index : i}).el);
+                  {model: properties[i]}).render({tags : tags, index : i}).el);
         }
 
         return this;

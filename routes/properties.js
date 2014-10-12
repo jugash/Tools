@@ -58,11 +58,20 @@ exports.findByAllTags = function(req, res) {
     });
 };
 
-exports.findByAnyTag = function(req, res) {
-    var tags = req.params.tags.split(',').join('|');
-    // var excludes = req.params.excludes.split(',').join('|');
+exports.findByAnyTag = function(req, res) {    
+
+    var query = {};
+
+    if(req.params.tags) {
+        query["description"] = { "$regex" : req.params.tags.split(',').join('|')}; 
+    }
+    
+    if(req.params.towns) {
+        query["address"] = { "$regex" : req.params.towns.split(',').join('|')}; 
+    }
+
     db.collection('properties', function(err, collection) {
-        collection.find({'description' : { '$regex' : tags }}).limit(50).toArray(function(err, items) {
+        collection.find(query).sort( {'price' : 1}).limit(50).toArray(function(err, items) {
             res.send(items);
         });
     });

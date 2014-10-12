@@ -10,13 +10,14 @@
     <!-- Le styles -->    
     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
-    <link rel="stylesheet" href="//cdn.datatables.net/plug-ins/a5734b29083/integration/bootstrap/3/dataTables.bootstrap.css">
+    <link rel="stylesheet" href="//cdn.datatables.net/1.10.2/css/jquery.dataTables.css">
     
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.2.0/js/bootstrap.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.10.4/typeahead.bundle.min.js"></script>
+    <script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
 
     
     <!--<link href="css/styles.css" rel="stylesheet">
@@ -57,8 +58,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="search-control" for="Excludes">Excludes</label>
-                        <input type="text" class="form-control" placeholder="new,rennovated..." name="query" value="" id="exclude-string">    
+                        <label class="search-control" for="Towns">Town</label>
+                        <input type="text" class="form-control" placeholder="Durham,Derby,..." name="query" value="" id="towns-string">    
                     </div>
                     <a id="search-link" class="btn btn-success"><span class="glyphicon glyphicon-search" ></span></a>
                 </form>
@@ -69,11 +70,18 @@
 
 <script type="text/javascript">
     $( "#search-link" ).click(function() {
-        this.href = "/#/propertyOR/" + $('#search-string').val();
-        var exclude = $('#exclude-string').val();
-        if(exclude.length > 0) {
-            this.href += '/exclude/' + exclude;
+
+        this.href = "/#/propertyOR";
+        var tags = $('#search-string').val();
+        if(tags.length > 0) {
+            this.href += '/tags/' + tags;
         }
+
+        var towns = $('#towns-string').val();
+        if(towns.length > 0) {
+            this.href += '/towns/' + towns;
+        }
+
     });
 
 
@@ -85,7 +93,7 @@
     });
 
 
-    $("#exclude-string").keyup(function(event){
+    $("#towns-string").keyup(function(event){
         if(event.keyCode == 13){
             $("#search-link").get(0).click();
             event.preventDefault();
