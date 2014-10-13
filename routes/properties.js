@@ -71,7 +71,7 @@ exports.findByAnyTag = function(req, res) {
     }
 
     db.collection('properties', function(err, collection) {
-        collection.find(query).sort( {'price' : 1}).limit(50).toArray(function(err, items) {
+        collection.find(query).sort( {'price' : 1,  'date' : -1, 'number' : -1, }).limit(100).toArray(function(err, items) {
             res.send(items);
         });
     });

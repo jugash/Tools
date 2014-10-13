@@ -26,7 +26,12 @@ db.open(function(err,db) {
 
 
 var stats = {};
-var findURL = "/property-for-sale/" + process.argv.slice(2) + ".html?maxPrice=150000&minBedrooms=1&radius=3.0&partBuyPartRent=false";
+var data = {};
+
+var town = process.argv[2];
+var days = process.argv[3];
+
+var findURL = "/property-for-sale/" + town + ".html?maxPrice=150000&minBedrooms=1&radius=3.0&partBuyPartRent=false&?maxDaysSinceAdded=" + days;
 
 var crawler = new Crawler(config.baseURL, findURL, parseInt(config.port), parseInt(config.retryInterval));
 
@@ -55,33 +60,27 @@ crawler.on("fetchcomplete", function(queueItem, responseBuffer, response) {
 
 		// console.log(responseBuffer.toString());
 
-		var price = $('#amount').text().replace(/£|,/gi,'').trim();
+		var price = 0;
 		var address = $('h2','#addresscontainer').text().trim();
 		var type = $('h1#propertytype').text().trim();
 		
 		var number = 0;
 		var house = "";
-		
+
+		if($('#amount')) {
+			price = parseInt($('#amount').text().replace(/£|,/gi,'').trim());
+		}
 
 		{
 			var regExp = /([0-9])[\s]*bed[\s]*room[\s]*([\S\s]*)\sfor\ssale$/i;
 			var match = regExp.exec(type);
 
 			if(match) {
-				number = match[1];
+				number = parseInt(match[1]);
 				house = match[2];
 			}
 		}
 
-		{
-			var regExp = /([0-9])[\s]*bed[\s]*room[\s]*([\S\s]*)\sfor\ssale$/i;
-			var match = regExp.exec(address);
-
-			if(match) {
-				number = match[1];
-				house = match[2];
-			}
-		}
 
 		var description = $('.propertyDetailDescription').text().trim();
 
@@ -92,6 +91,7 @@ crawler.on("fetchcomplete", function(queueItem, responseBuffer, response) {
 			"house" : house,
 			"address" : address,
 			"type" : type,
+			"date" : data[queueItem.path],
 			"description" : description
 		};
 
@@ -108,12 +108,36 @@ crawler.on("fetchcomplete", function(queueItem, responseBuffer, response) {
 				}
 			});
 		});
-
+		
 
 	} else {
 
+		// console.log(responseBuffer.toString());
+
 		$('li.moredetails').each(function(i,elem) {
-			crawler.queue.add("http",config.baseURL,parseInt(config.port), $(this).find('a').attr('href'));
+			
+			var agent = $(elem).parentsUntil('div.moreinfo')
+						.parent().next().find('p.branchblurb').text();
+
+			var href = $(this).find('a').attr('href');
+
+			if(href) {
+
+				var regExp = /([0-9][0-9]?)\/([0-9][0-9])\/([0-9][0-9][0-9]?[0-9]?)/i;
+				var match = regExp.exec(agent);
+
+				var updateDate = new Date();
+
+				if(match && match.length == 4) {
+					updateDate = new Date(parseInt(match[3]),parseInt(match[2])-1,parseInt(match[1]));
+				}
+
+				data[href] =  updateDate.getTime();
+
+				console.log("DATE :: " + updateDate);
+			}
+
+			crawler.queue.add("http",config.baseURL,parseInt(config.port), href);
 		});
 		
 		var href = $('div.slidercontainer').children().last().find('a.pagenavigation').attr('href');

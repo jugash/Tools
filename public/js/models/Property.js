@@ -16,6 +16,7 @@ define([
 			house : "",
 			address : "",
 			type : "",
+			updateDate : "",
 			description : ""
 		},
 

@@ -19,6 +19,10 @@
   font-size: 24px;
 }
 
+.property-header{
+  font-size: 20px;
+}
+
 .property-url a {
   color:#DB6EC0;
   font-size: 18px;

@@ -17,11 +17,6 @@ define([
 	        this.model.bind("destroy", this.close, this);
 	    },
 
-	    renderNormal: function (elem) {
-	        $(this.el).html(_.template(itemTemplate, {property : this.model, tags : elem.tags, index: elem.index}));
-	        return this;
-	    },
-
 	    render: function (elem) {
 	        $(this.el).html(_.template(tableItemTemplate, {property : this.model, tags : elem.tags, index: elem.index}));
 	        return this;

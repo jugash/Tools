@@ -7,17 +7,21 @@
 		<span class="label label-danger"><%= property.get("number") %></span>
 	</td>
 
+	<td class="property-summary">	
+		<span class="label label-info"><%= new Date(property.get("date")).toDateString() %></span>
+	</td>
+
 	<td class="property-summary">
 		<span class="label label-success"><%= property.get("house") %></span>
 	</td>
 
-	<td class="property-summary">	
-		<span class="label label-primary"><%= property.get("price") %></span>
-	</td>
+<!-- 	<td class="property-summary">	
+		<span class="label label-primary"></span>
+	</td> -->
 
-	<td class="property-description">
+	<td class="property-summary">
 		<span class="label label-warning">
-			<a data-toggle="modal" data-target="#viewdetails-<%= index %>" href="#">Description</a>
+			<a data-toggle="modal" data-target="#viewdetails-<%= index %>" href="#"><%= property.get("price") %></a>
 		</span>
 		<div class="modal fade" id="viewdetails-<%= index %>" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
 	      <div class="modal-dialog modal-lg">
