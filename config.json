@@ -1,7 +1,7 @@
 {
     "baseURL" : "www.rightmove.co.uk",
     "query"	  : "/house-prices/detail.html?country=england&locationIdentifier=POSTCODE%5E3973297&searchLocation=E3+3GN&radius=1.0&year=1&referrer=listChangeCriteria",
-    "find"	  : "/property-for-sale/Durham.html?maxPrice=150000&minBedrooms=1&radius=3.0&partBuyPartRent=false",
+    "find"	  : "/property-for-sale/Durham.html?maxPrice=150000&minBedrooms=1&radius=1.0&partBuyPartRent=false",
     "port" : "80",
     "retryInterval" : "300",
     "filterPattern" : "/house-prices\/detail.html/i"

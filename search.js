@@ -3,6 +3,7 @@ var Crawler = require("simplecrawler");
 var config = require("./config.json");
 
 var mongo = require('mongodb');
+var geocoder = require('geocoder');
 
 var ipaddress = process.env.OPENSHIFT_MONGODB_DB_HOST || "localhost";
 var port = process.env.OPENSHIFT_MONGODB_DB_PORT || 27017;
@@ -31,7 +32,7 @@ var data = {};
 var town = process.argv[2];
 var days = process.argv[3];
 
-var findURL = "/property-for-sale/" + town + ".html?maxPrice=150000&minBedrooms=1&radius=3.0&partBuyPartRent=false&?maxDaysSinceAdded=" + days;
+var findURL = "/property-for-sale/" + town + ".html?maxPrice=250000&minBedrooms=1&radius=1.0&partBuyPartRent=false&?maxDaysSinceAdded=" + days;
 
 var crawler = new Crawler(config.baseURL, findURL, parseInt(config.port), parseInt(config.retryInterval));
 
@@ -80,6 +81,12 @@ crawler.on("fetchcomplete", function(queueItem, responseBuffer, response) {
 				house = match[2];
 			}
 		}
+
+		// if(address) {
+		// 	geocoder.geocode(address, function ( err, data ) {
+	 //  			console.log(JSON.stringify(data));
+		// 	});
+		// }
 
 
 		var description = $('.propertyDetailDescription').text().trim();

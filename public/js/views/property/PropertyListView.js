@@ -20,6 +20,8 @@ define([
 
         $(this.el).html(_.template(tableTemplate));
 
+        $('#resultsCount', this.el).append(properties.length + " properties found");
+
         for (var i = 0; i <  properties.length; i++) {
             $('.thumbnails', this.el).append(new PropertyListItemView(
                   {model: properties[i]}).render({tags : tags, index : i}).el);

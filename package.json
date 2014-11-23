@@ -5,6 +5,7 @@
     "private": true,
     "dependencies": {
         "express": "*",
+	"geocoder" : "*",
         "mongodb": "*",
         "cheerio": "*",
         "simplecrawler" : "*",

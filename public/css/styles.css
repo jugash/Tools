@@ -48,4 +48,3 @@ body {
 .collapse+a.btn.showdetails:before { 
     content:'Show details »'; 
 }
-
