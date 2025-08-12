@@ -1,0 +1,214 @@
+Nice — below is a crisp package for the Tech Review Board: an Executive Summary (C0) and four architecture diagram levels (C1–C4). Each diagram is accompanied by a short narrative, key decisions, risks, and acceptance criteria. I kept it focused so you can present it directly; drop into your slide deck or handout as-is.
+
+Executive summary (C0)
+
+Goal: Introduce HashiCorp Vault as an Intermediate CA signed by the existing Microsoft AD CS root CA so OpenShift workloads can get short-lived, dynamically-issued certificates (via cert‑manager) while preserving enterprise trust.
+
+Why: Vault as an intermediate CA gives automated certificate lifecycle (short TTLs, programmatic rotation, auditability) and decouples workload issuance from AD CS operational constraints while keeping the Root CA offline/trusted.
+
+Scope: Functional-test (non‑prod), Pre‑prod, Production. Changes touch CA hierarchy, trust stores (OS, browser, JVM), cert‑manager configuration in OpenShift, AD CS templates/policies, and enterprise distribution (GPO / Linux automation).
+
+Recommended decision: Approve phased rollout (Functional → Pre‑prod → Prod) with environment‑isolated Vault intermediate CAs, GPO updates for Windows, and automated trust distribution for Linux and service JVMs. Require a pilot validation window in Pre‑prod and documented rollback before Prod.
+
+High‑level benefits: automated certificate issuance & renewal, reduced blast radius for compromised keys, improved audit trails, easier service onboarding.
+
+⸻
+
+C1 — System context (one‑page, who/what interacts with the solution)
+
++---------------------------------------------------------------+
+|                       Enterprise Network                      |
+|                                                               |
+|  +----------------+   +-----------------+   +---------------+ |
+|  | Microsoft AD   |---|  Vault PKI (Int)|---| OpenShift     | |
+|  | CS Root (Root) |   |  per environment|   | Clusters (3)  | |
+|  +----------------+   +-----------------+   +---------------+ |
+|         |                     |     ^                   |     |
+|         |                     |     | cert-manager      |     |
+|    GPOs |                     |     | (ClusterIssuer)   |     |
+|    ->   v                     |     v                   v     |
+|  Windows Endpoints    External Apps & JVMs <--- Service Mesh /|
+|  Browsers (Chrome/Edge)  (Linux, Java keystores)    Workloads  |
++---------------------------------------------------------------+
+
+Narrative: AD CS remains the root of trust. Vault operates as a subordinate (intermediate) CA per environment. OpenShift clusters use cert‑manager with a Vault issuer to request certificates. Endpoints (browsers, OS, JVM) trust the Root and the Vault intermediate chain as distributed by GPO and Linux/JVM automation.
+
+Key stakeholders: PKI team (AD CS), Security/Vault operators, Platform (OpenShift) team, Desktop/Endpoint team (GPO), Application owners.
+
+⸻
+
+C2 — Container / Component view (components inside the system boundary)
+
+[AD CS Root CA]
+    └─ Provides signing service for Vault Intermediate CSR (often via AD CS Web/Offline CA)
+
+[Vault PKI (per env)]
+ - PKI secrets engine (pki_int)
+ - Issuing CA config, role definitions (ttl, allowed_domains)
+ - Audit logging -> SIEM
+ - Kubernetes auth backend for cert-manager
+ - Storage backend (HSM/KMS recommended)
+
+[OpenShift Cluster (per env)]
+ - cert-manager (controller)
+ - ClusterIssuer pointing to Vault
+ - Service workloads (sidecar/proxy/ingress) requesting certs
+ - Ingress/Route controllers (edge termination)
+
+[Trust Distribution]
+ - Windows GPO (Root + Intermediate)
+ - Linux automation (update-ca-trust / update-ca-certificates)
+ - Java keystore automation (keytool)
+ - Firefox enterprise policies (if used)
+
+Narrative: This level shows which software pieces you deploy/configure. Vault handles PKI issuance and Kubernetes auth; cert‑manager integrates with Vault for workload certs. Trust distribution is automated where possible and controlled via GPO for Windows.
+
+⸻
+
+C3 — Integration & sequence (runtime interactions)
+	1.	Vault Intermediate bootstrap
+	•	Operator creates intermediate CSR in Vault (pki_int/generate/internal).
+	•	Admin exports CSR, requests AD CS to sign using subordinate CA template.
+	•	Signed certificate imported into Vault (pki_int/intermediate/set-signed); Vault now acts as intermediate issuing CA.
+	2.	Trust chain distribution
+	•	Export Vault Intermediate and AD Root certs.
+	•	Windows: push via GPO to Appropriate Stores (Trusted Root for Root CA if not present; Intermediate CA for Vault Intermediate if required).
+	•	Linux: distribute cert and run update-ca-trust / update-ca-certificates.
+	•	JVMs: import into JVM cacerts or app-specific truststore.
+	3.	OpenShift & cert-manager
+	•	Configure Vault Kubernetes auth role and policies to allow cert issuance for cert‑manager service account.
+	•	Create ClusterIssuer pointing at Vault path (pki_int/sign/<role>).
+	•	Developer creates Certificate resources -> cert‑manager requests certificate from Vault -> Vault returns cert + chain -> cert-manager stores secret in namespace.
+	4.	Workload usage
+	•	Workload mounts cert secret; uses for TLS.
+	•	Sidecars / ingress controllers may need full chain in tls.crt (cert + intermediate + root as enterprise requires).
+
+Sequence diagram (text):
+Client/Cert-manager -> Vault (K8s auth) -> Vault PKI sign -> returns cert chain -> cert-manager stores secret -> workload uses cert -> client validates chain against trusted Root/Intermediate.
+
+⸻
+
+C4 — Implementation / configuration snippets & operational details
+
+(These are the concrete items reviewers will expect to see.)
+	1.	Vault intermediate CSR generation
+
+vault write -format=json pki_int/intermediate/generate/internal \
+  common_name="Vault Intermediate - <env>.corp.example.com" ttl="43800h" > csr.json
+jq -r .data.csr csr.json > vault_int.csr
+
+	2.	AD CS sign step (example using certreq on Windows CA web server)
+
+certreq -submit -attrib "CertificateTemplate:SubordinateCA" vault_int.csr vault_int_signed.cer
+
+	3.	Import signed cert into Vault
+
+vault write pki_int/intermediate/set-signed certificate=@vault_int_signed.cer
+
+	4.	Configure cert-manager ClusterIssuer (YAML)
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: vault-issuer
+spec:
+  vault:
+    server: https://vault.<env>.corp.example.com
+    path: pki_int/sign/<role>
+    auth:
+      kubernetes:
+        mountPath: /v1/auth/kubernetes
+        role: cert-manager
+
+	5.	Cert-manager Certificate example
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: my-app-tls
+  namespace: my-app
+spec:
+  secretName: my-app-tls
+  commonName: my-app.my-app.svc.cluster.local
+  dnsNames:
+  - my-app.my-app.svc.cluster.local
+  issuerRef:
+    name: vault-issuer
+    kind: ClusterIssuer
+
+	6.	Linux trust automation (example script)
+
+	•	Copy vault-intermediate.crt to appropriate anchor and run distro command in bootstrap config management (Ansible/Puppet).
+	•	RHEL: /etc/pki/ca-trust/source/anchors/
+	•	Debian: /usr/local/share/ca-certificates/
+
+	7.	JVM automation
+
+	•	Use keytool to import Vault intermediate (CI job or configuration management):
+
+keytool -importcert -alias vault-int -file vault-int.crt -keystore /path/to/cacerts -storepass changeit -noprompt
+
+	8.	Chain formation guidance
+
+	•	Ensure TLS bundles returned to clients (Ingress, sidecars) contain: [leaf cert] + [Vault Intermediate] + [AD Root] if client stacks do not fetch missing intermediates.
+	•	Set issuing_ca in Vault to include the intermediate + root so cert-manager consumers receive full chain.
+
+	9.	HSM / Key protection
+
+	•	Use HSM or cloud KMS for Vault master key storage where possible. Document backup and unseal procedures.
+
+⸻
+
+Key design decisions for board approval
+	•	Environment isolation: Vault intermediate CA instances must be environment-specific (non‑prod, preprod, prod). Decision: approve 1 Vault PKI per environment.
+	•	Trust distribution approach: Use GPO for Windows; automated config management for Linux & JVMs. Decision: approve GPO + Ansible pipeline for non-Windows endpoints.
+	•	Intermediate lifetime / key rotation: Short expiry for intermediate? (Common pattern: multi‑year intermediate; rotate periodically.) Decision: approve 3–5 year intermediate with documented rotation procedure and emergency rotation plan.
+	•	Certificate lifetimes for workloads: Recommend short TTLs (e.g., 24–72h). cert-manager will auto-renew. Decision: approve 24h–7d for workload certs; require exceptions documented.
+
+⸻
+
+Risks & mitigations
+	•	Risk: Non‑prod intermediate trusted by production endpoints (cross-env trust).
+	•	Mitigation: Strict GPO scoping, network segmentation, and validation tests to ensure only prod root/ intermediates are in Prod trusts.
+	•	Risk: Clients that don’t accept intermediate (missing chain).
+	•	Mitigation: Ensure Vault returns full chain and configure ingress/sidecars to include chain; validate across major client implementations.
+	•	Risk: Vault compromise.
+	•	Mitigation: Harden Vault: HSM/KMS, sealed/unseal policy, RBAC, audit logging to SIEM, periodic vault security review.
+	•	Risk: AD CS template misconfiguration prevents subordinate CA issuance.
+	•	Mitigation: Test signing flow in Functional Test; maintain AD CS change control with rollback.
+
+⸻
+
+Rollout plan (high level)
+	1.	Functional Test (non‑prod) — 2–4 weeks
+	•	Deploy Vault PKI (test instance).
+	•	Create CSR, sign with AD CS test subordinate template.
+	•	Configure cert‑manager in functional OpenShift cluster(s).
+	•	Automate Linux/JVM trust updates for test hosts.
+	•	Validate issuance, rotation, chain validation, app behavior.
+	2.	Pre‑production — 2–4 weeks
+	•	Deploy production‑equivalent Vault PKI (preprod).
+	•	Rehearse intermediate rotation and revocation.
+	•	Full integration tests with real AD CS signing workflows.
+	•	Stakeholder sign‑off (platform, security, desktop).
+	3.	Production
+	•	Execute final change window: create prod Vault intermediate signed by AD CS root; distribute trusts via GPO/config mgmt; flip cert‑manager ClusterIssuer endpoints to prod Vault.
+	•	Monitor for 2 weeks; have rollback plan to previous cert issuance approach.
+
+Rollback plan: Revert cert‑manager to previous issuer (AD CS/other) and re-import previous chain into workloads if needed. Keep previous CA issuing capability active during a 2‑week overlap.
+
+⸻
+
+Acceptance criteria for Tech Review Board
+	•	Vault intermediate CA signed by AD CS in Functional Test and cert‑manager integration validated end‑to‑end.
+	•	Trust distribution automated for Windows (GPO test), Linux, and JVM with demonstrated validation scripts.
+	•	Security controls documented: HSM usage, RBAC policies, audit forwarding to SIEM, unseal key handling.
+	•	Runbook for intermediate rotation and emergency revocation present and tested.
+	•	Environment isolation proof (non‑prod intermediate not trusted by prod endpoints).
+
+⸻
+
+If you want, I can:
+	•	Produce a one‑page slide (PNG or PPTX) with an annotated C1 diagram + executive bullets.
+	•	Produce a printable checklist / runbook for the pre‑prod rollout (CSR steps, AD CS commands, GPO changes, validation commands).
+Which would you like first?
