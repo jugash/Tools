@@ -1,0 +1,214 @@
+Here’s the updated C0–C4 architecture document that now covers both scenarios:
+	•	OpenShift workloads getting certificates via cert-manager from Vault Intermediate
+	•	Alloy agents on VMs getting certificates via Ansible from Vault Intermediate
+
+I’ve included textual diagrams at each level so this can be read without graphics.
+
+⸻
+
+C0 – Executive Summary
+
+Goal:
+Introduce HashiCorp Vault as an Intermediate CA signed by the existing Microsoft AD CS Root CA to automate certificate issuance for:
+	1.	OpenShift workloads via cert-manager
+	2.	Alloy agents on VMs via Ansible provisioning
+
+Why:
+	•	Short-lived certificates improve security posture.
+	•	Decouple workload certificate issuance from AD CS operational constraints.
+	•	Maintain the enterprise’s existing Root of Trust (Microsoft AD CS).
+	•	Single PKI platform for both container and VM-based workloads.
+
+Scope:
+Three environments:
+	•	Functional Test (non-prod)
+	•	Pre-production
+	•	Production
+
+Changes include:
+	•	CA hierarchy update (Vault Intermediate per environment)
+	•	Trust store updates (Windows via GPO, Linux via automation, JVM imports)
+	•	cert-manager integration for OpenShift workloads
+	•	Ansible integration for VM-based Alloy agents
+
+Recommendation:
+Approve phased rollout: Functional → Pre-prod → Prod, with environment-isolated intermediates, automated trust distribution, and fully automated issuance for both container and VM workloads.
+
+⸻
+
+C1 – System Context
+
+Textual Diagram:
+
++---------------------------------------------------------------+
+|                       Enterprise Network                      |
+|                                                               |
+|  +----------------+                                           |
+|  | Microsoft AD   |                                           |
+|  | CS Root CA     |                                           |
+|  +----------------+                                           |
+|          |                                                    |
+|          v                                                    |
+|  +---------------------------+                                |
+|  | Vault PKI (Intermediate)  | <-- One per environment       |
+|  +---------------------------+                                |
+|      |                          |                             |
+|      | certificates             | certificates               |
+|      v                          v                             |
+|  OpenShift Clusters       Alloy Agents on VMs                 |
+|  (via cert-manager)       (via Ansible)                       |
++---------------------------------------------------------------+
+
+Narrative:
+Microsoft AD CS remains the Root CA. Each environment has a Vault Intermediate CA. OpenShift workloads get certificates through cert-manager, while Alloy VMs get certificates during Ansible-driven provisioning.
+
+⸻
+
+C2 – Container/Component View
+
+Textual Diagram:
+
+[AD CS Root CA]
+    └─ Signs Vault Intermediate CSR
+
+[Vault PKI Intermediate CA (per env)]
+    - PKI secrets engine (pki_int)
+    - Roles: "ocp-workloads", "alloy-agents"
+    - Issuing & CA chains
+    - Audit logs to SIEM
+    - Auth methods: Kubernetes Auth, AppRole
+
+[OpenShift Cluster]
+    - cert-manager
+    - ClusterIssuer -> Vault PKI role "ocp-workloads"
+    - Service workloads requesting TLS certs
+
+[VMs running Alloy]
+    - Ansible provisioning role
+    - AppRole login to Vault PKI role "alloy-agents"
+    - Certificates deployed to /etc/alloy
+    - Trust store updated
+
+[Trust Distribution]
+    - Windows: GPO pushes Root + Intermediate
+    - Linux: update-ca-trust/update-ca-certificates
+    - JVM: keytool import
+
+
+⸻
+
+C3 – Integration & Sequence
+
+Scenario 1: OpenShift workload
+
+1. cert-manager authenticates to Vault via Kubernetes Auth
+2. Requests certificate from Vault PKI (role: ocp-workloads)
+3. Vault issues short-lived cert signed by Vault Intermediate
+4. cert-manager stores cert+key+chain in Kubernetes Secret
+5. Workload mounts Secret and serves TLS
+6. Client validates against Root+Intermediate in trust store
+
+Scenario 2: Alloy agent on VM
+
+1. During Ansible provisioning, playbook authenticates to Vault via AppRole
+2. Requests certificate from Vault PKI (role: alloy-agents)
+3. Vault issues short-lived cert signed by Vault Intermediate
+4. Ansible writes cert+key+chain to /etc/alloy
+5. Trust store updated with Root+Intermediate
+6. Alloy agent connects to services using issued cert
+
+
+⸻
+
+C4 – Implementation & Configuration Details
+
+Vault PKI role creation (two roles):
+
+# OpenShift workloads
+vault write pki_int/roles/ocp-workloads \
+    allowed_domains="svc.cluster.local" \
+    allow_subdomains=true \
+    max_ttl="72h"
+
+# Alloy agents
+vault write pki_int/roles/alloy-agents \
+    allowed_domains="alloy.mycorp.local" \
+    allow_subdomains=true \
+    max_ttl="720h"
+
+cert-manager ClusterIssuer for OpenShift:
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: vault-issuer
+spec:
+  vault:
+    server: https://vault.<env>.corp.example.com
+    path: pki_int/sign/ocp-workloads
+    auth:
+      kubernetes:
+        mountPath: /v1/auth/kubernetes
+        role: cert-manager
+
+Ansible task for Alloy VMs:
+
+- name: Authenticate to Vault using AppRole
+  uri:
+    url: "https://vault.<env>.corp.example.com/v1/auth/approle/login"
+    method: POST
+    body_format: json
+    body:
+      role_id: "{{ vault_role_id }}"
+      secret_id: "{{ vault_secret_id }}"
+  register: vault_auth
+
+- name: Request cert for Alloy agent
+  uri:
+    url: "https://vault.<env>.corp.example.com/v1/pki_int/issue/alloy-agents"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_auth.json.auth.client_token }}"
+    body_format: json
+    body:
+      common_name: "{{ inventory_hostname }}.alloy.mycorp.local"
+  register: vault_cert
+
+- name: Write cert/key/chain
+  copy:
+    dest: "{{ item.dest }}"
+    content: "{{ item.content }}"
+    mode: '0600'
+  loop:
+    - { dest: "/etc/alloy/tls.crt", content: "{{ vault_cert.json.data.certificate }}" }
+    - { dest: "/etc/alloy/tls.key", content: "{{ vault_cert.json.data.private_key }}" }
+    - { dest: "/etc/alloy/ca.crt", content: "{{ vault_cert.json.data.issuing_ca }}" }
+
+
+⸻
+
+Final C1/C2 Unified Text Diagram
+
+Enterprise Network
+┌───────────────────────────────────────────────────────────────┐
+│                                                               │
+│  Microsoft AD CS Root CA                                      │
+│       │ signs                                                  │
+│       ▼                                                        │
+│  Vault PKI Intermediate CA (per environment)                  │
+│    ├── Role: ocp-workloads -> OpenShift via cert-manager       │
+│    └── Role: alloy-agents  -> Alloy VMs via Ansible            │
+│                                                               │
+│  ┌─────────────────────────┐      ┌────────────────────────┐ │
+│  │ OpenShift Cluster       │      │ Alloy Agents on VMs    │ │
+│  │ cert-manager +          │      │ Provisioned with       │ │
+│  │ ClusterIssuer           │      │ Ansible PKI role       │ │
+│  │ → Workload Secrets      │      │ → Cert in /etc/alloy   │ │
+│  └─────────────────────────┘      └────────────────────────┘ │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
+
+
+⸻
+
+Do you want me to also add a section to this document on how to enforce mTLS between Alloy agents and the services they connect to using this Vault-issued chain? That would complete the story for security review.
