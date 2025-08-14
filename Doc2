@@ -1,3 +1,46 @@
+import os
+import requests
+import time
+
+GRAFANA_URL = os.environ["GRAFANA_URL"]
+GRAFANA_TOKEN = os.environ["GRAFANA_TOKEN"]
+
+def grafana_query(api_path, params=None):
+    headers = {"Authorization": f"Bearer {GRAFANA_TOKEN}"}
+    url = f"{GRAFANA_URL}/api/{api_path}"
+    resp = requests.get(url, headers=headers, params=params, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+def check_prometheus_metric(query):
+    data = grafana_query(f"datasources/proxy/1/api/v1/query", {"query": query})
+    return float(data["data"]["result"][0]["value"][1])
+
+def check_loki_logs(query):
+    data = grafana_query(f"datasources/proxy/2/loki/api/v1/query", {"query": query})
+    return int(data["data"]["result"][0]["value"][1]) if data["data"]["result"] else 0
+
+def run_health_check():
+    print("Checking cluster health via Grafana...")
+    api_up = check_prometheus_metric('up{job="kube-apiserver"}')
+    pod_restarts = check_prometheus_metric(
+        'sum(kube_pod_container_status_restarts_total{namespace!="kube-system"})'
+    )
+    error_logs = check_loki_logs('{level="error"} |~ ".*" | count_over_time([5m])')
+
+    if api_up != 1:
+        raise Exception("API server is down!")
+    if pod_restarts >= 5:
+        raise Exception(f"Too many pod restarts: {pod_restarts}")
+    if error_logs > 10:
+        raise Exception(f"Too many error logs: {error_logs}")
+    
+    print("✅ Cluster health check passed")
+
+if __name__ == "__main__":
+    run_health_check()
+
+
 Nice — below is a crisp package for the Tech Review Board: an Executive Summary (C0) and four architecture diagram levels (C1–C4). Each diagram is accompanied by a short narrative, key decisions, risks, and acceptance criteria. I kept it focused so you can present it directly; drop into your slide deck or handout as-is.
 
 Executive summary (C0)
