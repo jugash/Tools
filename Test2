@@ -1,0 +1,70 @@
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.SSLContextBuilder;
+import org.apache.hc.core5.ssl.SSLContexts;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+
+import java.io.FileInputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
+
+public class MtlsRestClient {
+
+    public static RestClient createRestClient() throws Exception {
+        // Load client certificate
+        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+        X509Certificate cert = (X509Certificate) certFactory.generateCertificate(
+                new FileInputStream("client.crt"));
+
+        // Load private key (assumes PKCS#8 PEM format)
+        String keyPem = new String(Files.readAllBytes(Paths.get("client.key")))
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
+        byte[] decodedKey = Base64.getDecoder().decode(keyPem);
+        PrivateKey privateKey = KeyFactory.getInstance("RSA")
+                .generatePrivate(new PKCS8EncodedKeySpec(decodedKey));
+
+        // Build client keystore in-memory
+        KeyStore keyStore = KeyStore.getInstance("PKCS12");
+        keyStore.load(null, null);
+        keyStore.setKeyEntry("client", privateKey, "changeit".toCharArray(),
+                new java.security.cert.Certificate[]{cert});
+
+        // Load truststore (CA cert for server validation)
+        X509Certificate caCert = (X509Certificate) certFactory.generateCertificate(
+                new FileInputStream("ca.crt"));
+        KeyStore trustStore = KeyStore.getInstance("PKCS12");
+        trustStore.load(null, null);
+        trustStore.setCertificateEntry("ca", caCert);
+
+        // Build SSL context
+        SSLContextBuilder sslContextBuilder = SSLContexts.custom()
+                .loadKeyMaterial(keyStore, "changeit".toCharArray())
+                .loadTrustMaterial(trustStore, null);
+
+        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(
+                sslContextBuilder.build());
+
+        HttpClient httpClient = HttpClients.custom()
+                .setSSLSocketFactory(socketFactory)
+                .build();
+
+        // Wrap into Spring’s RestClient
+        HttpComponentsClientHttpRequestFactory requestFactory =
+                new HttpComponentsClientHttpRequestFactory(httpClient);
+
+        return RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
+    }
+}
