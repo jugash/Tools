@@ -1,0 +1,122 @@
+version: 2
+
+plan:
+  project-key: MYPROJ
+  key: SEMVERPROMO
+  name: Semver Auto+Manual Promotion Pipeline
+
+repositories:
+  - app-repo:
+      type: git
+      url: 'git@your.git.server:team/app-repo.git'
+      branch: refs/heads/main
+  - gitops-repo:
+      type: git
+      url: 'git@your.git.server:team/gitops-repo.git'
+      branch: main
+
+branches:
+  create: false
+
+triggers:
+  - repository:
+      repository: app-repo
+      branch: refs/heads/main
+
+variables:
+  - name: DOCKER_REGISTRY
+    value: docker.example.com/myteam
+  - name: IMAGE_NAME
+    value: my-app
+  - name: GIT_AUTHOR_NAME
+    value: bamboo-ci
+  - name: GIT_AUTHOR_EMAIL
+    value: bamboo-ci@your.domain
+
+stages:
+  - VersionAndBuild:
+      jobs:
+        - VersionJob:
+            key: VER
+            tasks:
+              - checkout: { repository: app-repo }
+              - script:
+                  interpreter: BINSH
+                  scripts:
+                    - echo "## Determine last tag"
+                    - LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+                    - echo "Last tag: $LAST_TAG"
+                    - COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s%n%b")
+                    - echo "Commits: $COMMITS"
+                    - MAJOR=0; MINOR=0; PATCH=0
+                    - if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then MAJOR=1; fi
+                    - if echo "$COMMITS" | grep -qE "^feat"; then MINOR=1; fi
+                    - if echo "$COMMITS" | grep -qE "^fix"; then PATCH=1; fi
+                    - BASE=$(echo $LAST_TAG | sed 's/^v//')
+                    - IFS=. read CUR_MAJOR CUR_MINOR CUR_PATCH <<< "$BASE"
+                    - if [ $MAJOR -eq 1 ]; then CUR_MAJOR=$((CUR_MAJOR+1)); CUR_MINOR=0; CUR_PATCH=0; fi
+                    - if [ $MINOR -eq 1 ] && [ $MAJOR -eq 0 ]; then CUR_MINOR=$((CUR_MINOR+1)); CUR_PATCH=0; fi
+                    - if [ $PATCH -eq 1 ] && [ $MAJOR -eq 0 ] && [ $MINOR -eq 0 ]; then CUR_PATCH=$((CUR_PATCH+1)); fi
+                    - NEW_TAG="v${CUR_MAJOR}.${CUR_MINOR}.${CUR_PATCH}"
+                    - echo "NEW_TAG=$NEW_TAG" | tee build.env
+                    - git tag "$NEW_TAG"
+                    - git push origin "$NEW_TAG"
+              - inject-variables:
+                  file: build.env
+                  scope: RESULT
+              - script:
+                  interpreter: BINSH
+                  scripts:
+                    - IMAGE="${bamboo.DOCKER_REGISTRY}/${bamboo.IMAGE_NAME}:${bamboo.NEW_TAG}"
+                    - docker build -t "$IMAGE" .
+                    - docker push "$IMAGE"
+
+  - Engineering:
+      jobs:
+        - EngJob:
+            key: ENG
+            tasks:
+              - checkout: { repository: gitops-repo }
+              - script:
+                  interpreter: BINSH
+                  scripts:
+                    - VALUES_FILE="values/engineering/values.yaml"
+                    - yq eval ".image.tag = \"${bamboo.NEW_TAG}\"" -i "$VALUES_FILE"
+                    - git config user.name "${bamboo.GIT_AUTHOR_NAME}"
+                    - git config user.email "${bamboo.GIT_AUTHOR_EMAIL}"
+                    - git commit -am "Promote ${bamboo.NEW_TAG} -> engineering"
+                    - git push origin main
+
+  - NonProd:
+      manual: true      # 🚦 Manual promotion required
+      jobs:
+        - NonProdJob:
+            key: NONPROD
+            tasks:
+              - checkout: { repository: gitops-repo }
+              - script:
+                  interpreter: BINSH
+                  scripts:
+                    - VALUES_FILE="values/nonprod/values.yaml"
+                    - yq eval ".image.tag = \"${bamboo.NEW_TAG}\"" -i "$VALUES_FILE"
+                    - git config user.name "${bamboo.GIT_AUTHOR_NAME}"
+                    - git config user.email "${bamboo.GIT_AUTHOR_EMAIL}"
+                    - git commit -am "Promote ${bamboo.NEW_TAG} -> nonprod"
+                    - git push origin main
+
+  - Prod:
+      manual: true      # 🚦 Manual promotion required
+      jobs:
+        - ProdJob:
+            key: PROD
+            tasks:
+              - checkout: { repository: gitops-repo }
+              - script:
+                  interpreter: BINSH
+                  scripts:
+                    - VALUES_FILE="values/prod/values.yaml"
+                    - yq eval ".image.tag = \"${bamboo.NEW_TAG}\"" -i "$VALUES_FILE"
+                    - git config user.name "${bamboo.GIT_AUTHOR_NAME}"
+                    - git config user.email "${bamboo.GIT_AUTHOR_EMAIL}"
+                    - git commit -am "Promote ${bamboo.NEW_TAG} -> prod"
+                    - git push origin main
