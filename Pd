@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: certificate-cn-namespace-label-multiple-prefixes
+spec:
+  validationFailureAction: enforce
+  background: false
+  rules:
+    - name: validate-cn-based-on-namespace-cel
+      match:
+        resources:
+          kinds:
+            - Certificate
+      context:
+        - name: nslabels
+          apiCall:
+            urlPath: "/api/v1/namespaces/{{ request.namespace }}"
+            jmesPath: "metadata.labels"
+      validate:
+        message: "Certificate commonName must contain the namespace label 'app.com/abc' for non-system namespaces."
+        deny:
+          conditions:
+            all:
+              - key: "!(['openshift-', 'kube-', 'system-', 'default-', 'monitoring-', 'logging-'].any(ns -> request.object.metadata.namespace.startsWith(ns)))"
+                operator: Equals
+                value: true
+              - key: "!request.object.spec.commonName.contains(nslabels.\"app.com/abc\")"
+                operator: Equals
+                value: true
